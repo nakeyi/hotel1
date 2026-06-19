@@ -149,10 +149,6 @@
       <h5 class="mb-0">确认预订信息</h5>
       <button class="btn btn-sm btn-outline-secondary" onclick="hideReserveModal()">关闭</button>
     </div>
-    <div class="row g-2 mb-2">
-      <div class="col-md-6"><input id="reserve_name" class="form-control" placeholder="预订姓名"></div>
-      <div class="col-md-6"><input id="reserve_phone" class="form-control" placeholder="预订手机号"></div>
-    </div>
     <div id="reserveSummary" class="reserve-summary"></div>
     <div class="reserve-modal-actions">
       <button class="btn btn-outline-secondary" onclick="hideReserveModal()">返回</button>
@@ -345,8 +341,10 @@ async function postJson(url, body) {
 }
 
 function reserveIdentity() {
-  const name = document.getElementById("reserve_name").value.trim();
-  const phoneRaw = document.getElementById("reserve_phone").value;
+  const nameEl = document.getElementById("reserveCustomer");
+  const phoneEl = document.getElementById("reservePhone");
+  const name = nameEl ? nameEl.value.trim() : "";
+  const phoneRaw = phoneEl ? phoneEl.value : "";
   const phone = normalizePhone(phoneRaw);
   if (!name) {
     showErrorNotice("请填写预订姓名");
@@ -475,11 +473,17 @@ function openReserveModal(roomId) {
   const nights = nightsBetween(checkin, checkout);
   const unit = Number(pendingReserveRoom.price);
   const total = unit * nights;
-  const reserveName = document.getElementById("reserve_name").value.trim();
-  const reservePhone = normalizePhone(document.getElementById("reserve_phone").value);
   document.getElementById("reserveSummary").innerHTML = `
-    <div><strong>客户：</strong>${reserveName || "（请填写）"}</div>
-    <div><strong>手机号：</strong>${reservePhone || "（请填写）"}</div>
+    <div class="row g-2 mb-2">
+      <div class="col-md-6">
+        <label class="form-label mb-1" for="reserveCustomer">客户</label>
+        <input id="reserveCustomer" class="form-control" value="" placeholder="请输入客户姓名">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label mb-1" for="reservePhone">手机号</label>
+        <input id="reservePhone" class="form-control" value="" placeholder="请输入手机号">
+      </div>
+    </div>
     <div><strong>房间：</strong>${pendingReserveRoom.room_id}</div>
     <div><strong>房型：</strong>${pendingReserveRoom.room_type}</div>
     <div><strong>面积：</strong>${pendingReserveRoom.area}㎡</div>

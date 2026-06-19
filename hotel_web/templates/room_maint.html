@@ -101,7 +101,7 @@ const setMsg = t => $("msg").textContent = t || "";
 let currentUser = null;
 let currentUserLoaded = false;
 const maintenanceTypeByStatus = {
-  "维护中": "维护",
+  "维修中": "维修",
   "清洁中": "清洁"
 };
 
@@ -167,10 +167,10 @@ function renderKpis(rows) {
 }
 
 function rowAction(room) {
-  const canIdle = room.status === "维护中" || room.status === "清洁中";
+  const canIdle = room.status === "维修中" || room.status === "清洁中" || room.status === "维修" || room.status === "清洁";
   return `
     <div class="d-flex flex-wrap gap-2">
-      <button class="btn btn-sm btn-outline-danger" onclick="confirmMaintain(${room.room_id}, '维护')">维护</button>
+      <button class="btn btn-sm btn-outline-danger" onclick="confirmMaintain(${room.room_id}, '维修')">维修</button>
       <button class="btn btn-sm btn-outline-success" onclick="confirmMaintain(${room.room_id}, '清洁')">清洁</button>
       <button class="btn btn-sm btn-outline-primary" ${canIdle ? `onclick="confirmIdle(${room.room_id}, '${room.status}')"` : "disabled"}>空闲</button>
     </div>
@@ -198,6 +198,10 @@ async function loadRooms() {
 }
 
 async function confirmMaintain(roomId, recordType) {
+  if (recordType !== "维修" && recordType !== "清洁") {
+    setMsg("记录类型无效");
+    return;
+  }
   openConfirmActionModal({
     title: "确认维护操作",
     body: `确认将房间 ${roomId} 标记为${recordType}吗？`,
@@ -219,7 +223,7 @@ async function confirmMaintain(roomId, recordType) {
 }
 
 async function confirmIdle(roomId, status) {
-  const recordType = maintenanceTypeByStatus[status];
+  const recordType = maintenanceTypeByStatus[status] || (status === "维修" ? "维修" : status === "清洁" ? "清洁" : "");
   if (!recordType) {
     setMsg("当前房间不需要恢复空闲");
     return;

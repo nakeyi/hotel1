@@ -17,8 +17,10 @@ STATUS_ALIASES = {
     "空闲": ROOM_STATUS_FREE,
     "已预订": ROOM_STATUS_RESERVED,
     "已入住": ROOM_STATUS_OCCUPIED,
-    "清洁中": "清洁中",
-    "维修中": "维修中",
+    "维修": "维修",
+    "清洁": "清洁",
+    "维修中": "维修",
+    "清洁中": "清洁",
 }
 
 
@@ -530,6 +532,18 @@ def _sync_room_status(cur, room_id):
     if int(cur.fetchone()[0] or 0) > 0:
         cur.execute("UPDATE room SET status=%s WHERE room_id=%s", (ROOM_STATUS_RESERVED, room_id))
         return ROOM_STATUS_RESERVED
+
+    cur.execute(
+        "SELECT record_type FROM room_maintenance_clean "
+        "WHERE room_id=%s AND result!='已完成' "
+        "ORDER BY record_time DESC LIMIT 1",
+        (room_id,),
+    )
+    row = cur.fetchone()
+    if row and row[0]:
+        maintenance_status = _maintenance_room_status(row[0])
+        cur.execute("UPDATE room SET status=%s WHERE room_id=%s", (maintenance_status, room_id))
+        return maintenance_status
 
     cur.execute("UPDATE room SET status=%s WHERE room_id=%s", (ROOM_STATUS_FREE, room_id))
     return ROOM_STATUS_FREE
@@ -1286,13 +1300,22 @@ def advanced_room_query(room_id, room_type, status, area_min, area_max, price_mi
     q_checkin = _parse_date_value(checkin_date)
     q_checkout = _parse_date_value(checkout_date)
     q_active_checkin = _parse_date_value(checkin_time)
-    need_active_details = bool(customer_name or customer_phone or q_active_checkin)
+    need_active_details = bool(
+        customer_name
+        or customer_phone
+        or q_active_checkin
+        or normalize_status(status) == ROOM_STATUS_OCCUPIED
+        or any(normalize_status(row[4]) == ROOM_STATUS_OCCUPIED for row in rows)
+    )
     active_rows = {}
+    occupied_room_ids = set()
     if need_active_details:
         active_rows = {row["room_id"]: row for row in _active_stay_rows(cur)}
     else:
         cur.execute("SELECT DISTINCT room_id FROM checkin WHERE actual_checkout_time IS NULL")
-    occupied_room_ids = {row[0] for row in cur.fetchall()}
+        occupied_room_ids = {row[0] for row in cur.fetchall()}
+    if not occupied_room_ids:
+        occupied_room_ids = {row["room_id"] for row in active_rows.values()}
     reserved_room_ids = set()
     if q_checkin and q_checkout:
         cur.execute(

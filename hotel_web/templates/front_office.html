@@ -37,11 +37,6 @@
               <div class="col-12 col-md-2"><label class="tiny-label">手机号</label><input id="roomCustomerPhone" class="form-control" placeholder="11位手机号"></div>
               <div class="col-12 col-md-3 d-grid"><button class="btn btn-outline-primary" onclick="loadRoomStatusView()">查询状态</button></div>
             </div>
-            <div class="row g-2 mt-2">
-              <div class="col-12 col-md-4"><input id="checkoutEditResId" class="form-control" placeholder="预订单号"></div>
-              <div class="col-12 col-md-4"><input id="checkoutEditDate" type="date" class="form-control" placeholder="新的离店日期"></div>
-              <div class="col-12 col-md-4 d-grid"><button class="btn btn-warning" onclick="saveCheckoutDate()">保存离店日期</button></div>
-            </div>
             <div id="roomStatusList" class="room-list mt-3"></div>
             <div id="roomStatusEmpty" class="room-empty d-none">暂无可查询的房态记录</div>
           </div>
@@ -241,6 +236,7 @@
     <div class="mt-2">
       <div class="tiny-label mb-2">消费明细</div>
       <div id="checkoutItems" class="d-grid gap-2"></div>
+      <div id="checkoutFeePreview" class="bill-tip mt-2"></div>
       <div class="mt-2"><input id="checkoutNote" class="form-control" placeholder="退房备注"></div>
     </div>
     <div class="reserve-modal-actions">
@@ -270,14 +266,33 @@
   <div class="reserve-modal-backdrop" data-close="1"></div>
   <div class="reserve-modal-panel">
     <div class="reserve-modal-header"><h5 class="mb-0">确认预订信息</h5><button class="btn btn-sm btn-outline-secondary" onclick="hideReserveModal()">关闭</button></div>
-    <div class="row g-2 mb-2">
-      <div class="col-md-6"><input id="reserve_name" class="form-control" placeholder="预订姓名"></div>
-      <div class="col-md-6"><input id="reserve_phone" class="form-control" placeholder="预订手机号"></div>
-    </div>
     <div id="reserveSummary" class="reserve-summary"></div>
     <div class="reserve-modal-actions">
       <button class="btn btn-outline-secondary" onclick="hideReserveModal()">返回</button>
       <button class="btn btn-success" onclick="confirmReserve()">确认下单</button>
+    </div>
+  </div>
+</div>
+
+<div id="checkoutEditModal" class="reserve-modal d-none" aria-hidden="true">
+  <div class="reserve-modal-backdrop" data-close="1" onclick="hideCheckoutEditModal()"></div>
+  <div class="reserve-modal-panel">
+    <div class="reserve-modal-header">
+      <h5 class="mb-0">修改离店日期</h5>
+      <button class="btn btn-sm btn-outline-secondary" onclick="hideCheckoutEditModal()">关闭</button>
+    </div>
+    <div id="checkoutEditSummary" class="reserve-summary"></div>
+    <div class="row g-2 mt-2">
+      <div class="col-12 col-md-6"><input id="checkoutEditResId" class="form-control" placeholder="订单号" readonly></div>
+      <div class="col-12 col-md-6"><input id="checkoutEditRoomId" class="form-control" placeholder="房间号" readonly></div>
+      <div class="col-12 col-md-6"><input id="checkoutEditCustomer" class="form-control" placeholder="客户姓名" readonly></div>
+      <div class="col-12 col-md-6"><input id="checkoutEditPhone" class="form-control" placeholder="手机号" readonly></div>
+      <div class="col-12 col-md-6"><input id="checkoutEditCheckin" class="form-control" placeholder="入住日期" readonly></div>
+      <div class="col-12 col-md-6"><input id="checkoutEditDate" type="date" class="form-control" placeholder="新的离店日期"></div>
+    </div>
+    <div class="reserve-modal-actions">
+      <button class="btn btn-outline-secondary" onclick="hideCheckoutEditModal()">返回</button>
+      <button class="btn btn-warning" onclick="saveCheckoutDate()">保存离店日期</button>
     </div>
   </div>
 </div>
@@ -486,17 +501,38 @@ function renderRoomStatusList(rooms) {
       </div>
       <div class="room-actions">
         <div class="room-status">${r.status || ""}</div>
-        <button class="btn btn-sm btn-outline-primary" onclick="openCheckoutEdit(${r.res_id || 0}, '${r.checkout_date || ""}')">改离店日</button>
+        <button class="btn btn-sm btn-outline-primary" onclick='openCheckoutEdit(${JSON.stringify(r).replaceAll("'", "\\'")})'>改离店日</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="checkinByOrder(${r.res_id || 0})">办理入住</button>
       </div>
     </div>
   `).join("");
 }
 
-function openCheckoutEdit(resId, checkoutDate) {
-  $("checkoutEditResId").value = resId || "";
-  $("checkoutEditDate").value = checkoutDate || "";
-  setMsg(`已选择订单 ${resId}，可以直接修改离店日期`);
+let pendingCheckoutEditOrder = null;
+
+function openCheckoutEdit(order) {
+  pendingCheckoutEditOrder = order || null;
+  $("checkoutEditResId").value = order?.res_id || "";
+  $("checkoutEditRoomId").value = order?.room_id || "";
+  $("checkoutEditCustomer").value = order?.customer || "";
+  $("checkoutEditPhone").value = order?.phone || "";
+  $("checkoutEditCheckin").value = order?.checkin_time || "";
+  $("checkoutEditDate").value = order?.checkout_date || "";
+  $("checkoutEditSummary").innerHTML = `
+    <div><strong>订单号：</strong>${order?.res_id || ""}</div>
+    <div><strong>房间：</strong>${order?.room_id || ""} · ${order?.room_type || ""}</div>
+    <div><strong>客户：</strong>${order?.customer || ""}</div>
+    <div><strong>手机号：</strong>${order?.phone || ""}</div>
+    <div><strong>入住：</strong>${order?.checkin_time || ""}</div>
+    <div><strong>原离店：</strong>${order?.checkout_date || ""}</div>
+  `;
+  $("checkoutEditModal").classList.remove("d-none");
+  setMsg(`已导入订单 ${order?.res_id || ""}，可直接修改离店日期`);
+}
+
+function hideCheckoutEditModal() {
+  $("checkoutEditModal").classList.add("d-none");
+  pendingCheckoutEditOrder = null;
 }
 
 async function loadRoomStatusView() {
@@ -515,13 +551,14 @@ async function loadRoomStatusView() {
 }
 
 async function saveCheckoutDate() {
-  const resId = $("checkoutEditResId").value;
+  const resId = $("checkoutEditResId").value || pendingCheckoutEditOrder?.res_id;
   if (!resId) {
     setMsg("请先选择一个预订单");
     return;
   }
   const d = await put(`/api/reservation/${resId}/checkout_date`, { checkout_date: $("checkoutEditDate").value });
   if (!d) return;
+  hideCheckoutEditModal();
   setMsg(d.message);
   await loadRoomStatusView();
 }
@@ -701,11 +738,32 @@ function openCheckoutModal(order) {
     <div><strong>离店：</strong>${order.checkout_date || ""}</div>
   `;
   $("checkoutConfirmModal").classList.remove("d-none");
+  updateCheckoutFeePreview();
 }
 
 function hideCheckoutModal() {
   $("checkoutConfirmModal").classList.add("d-none");
   pendingCheckoutOrder = null;
+}
+
+function updateCheckoutFeePreview() {
+  const box = $("checkoutFeePreview");
+  if (!box || !pendingCheckoutOrder) return;
+  const price = Number(pendingCheckoutOrder.price || 0);
+  const checkin = String(pendingCheckoutOrder.checkin_time || "").slice(0, 10);
+  const checkout = String(pendingCheckoutOrder.checkout_date || "").slice(0, 10);
+  let baseFee = 0;
+  if (price && checkin && checkout) {
+    const checkinDate = new Date(checkin);
+    const checkoutDate = new Date(checkout);
+    const nights = Math.max(1, Math.ceil((checkoutDate - checkinDate) / 86400000));
+    baseFee = price * nights;
+  }
+  const extraTotal = Array.from(document.querySelectorAll("#checkoutItems .checkout-item-row")).reduce((sum, row) => {
+    const amount = parseFloat(row.querySelector(".checkout-item-amount")?.value || "0") || 0;
+    return sum + (amount > 0 ? amount : 0);
+  }, 0);
+  box.textContent = `房费约 ${baseFee.toFixed(2)}，其他费用 ${extraTotal.toFixed(2)}，预计总费用 ${(baseFee + extraTotal).toFixed(2)}`;
 }
 
 async function confirmCheckout() {
@@ -778,8 +836,10 @@ async function confirmChangeRoom() {
 }
 
 function reserveIdentity() {
-  const name = $("reserve_name").value.trim();
-  const phone = normalizePhone($("reserve_phone").value);
+  const nameInput = $("reserveCustomer");
+  const phoneInput = $("reservePhone");
+  const name = nameInput ? nameInput.value.trim() : "";
+  const phone = normalizePhone(phoneInput ? phoneInput.value : "");
   if (!name) {
     showErrorNotice("请填写预订姓名");
     return null;
@@ -837,7 +897,7 @@ function renderMaintenanceRooms(rows) {
     return;
   }
   tbody.innerHTML = rows.map(room => {
-    const canRecover = room.status === "维修中" || room.status === "清洁中";
+    const canRecover = room.status === "维修" || room.status === "清洁" || room.status === "维修中" || room.status === "清洁中";
     return `
       <tr>
         <td>${room.room_id}</td>
@@ -871,17 +931,17 @@ async function loadMaintenanceRooms() {
 
 async function submitMaintenance(roomId, recordType) {
   openConfirmActionModal({
-    title: "??????",
-    body: `????? ${roomId} ???${recordType}??`,
-    confirmText: "??",
+    title: "确认维护",
+    body: `确认将房间 ${roomId} 标记为${recordType}吗？`,
+    confirmText: "确认",
     confirmClass: "btn-danger",
     onConfirm: async () => {
       const d = await post("/api/maintenance", {
         room_id: roomId,
         record_type: recordType,
-        handler: "",
-        result: `??${recordType}`,
-        remark: "???????"
+        handler: (currentUser && currentUser.username) || "",
+        result: `执行${recordType}`,
+        remark: "前台房间维护操作"
       });
       if (!d) return;
       setMsg(d.message || "");
@@ -891,16 +951,16 @@ async function submitMaintenance(roomId, recordType) {
 }
 
 async function recoverMaintenance(roomId, status) {
-  const map = { "?????": "???", "?????": "???" };
+  const map = { "维修": "维修", "清洁": "清洁", "维修中": "维修", "清洁中": "清洁" };
   const recordType = map[status];
   if (!recordType) {
-    setMsg("???????????");
+    setMsg("当前状态不是维护状态，无法恢复");
     return;
   }
   openConfirmActionModal({
-    title: "??????",
-    body: `????? ${roomId} ???????`,
-    confirmText: "??",
+    title: "恢复空闲",
+    body: `确认将房间 ${roomId} 从${recordType}状态恢复为空闲吗？`,
+    confirmText: "确认",
     confirmClass: "btn-primary",
     onConfirm: async () => {
       const d = await post("/api/maintenance/complete", {
@@ -987,11 +1047,17 @@ function openReserveModal(roomId) {
   const nights = Math.max(1, Math.floor((new Date(checkout) - new Date(checkin)) / 86400000));
   const unit = Number(pendingReserveRoom.price);
   const total = unit * nights;
-  const reserveName = $("reserve_name").value.trim();
-  const reservePhone = normalizePhone($("reserve_phone").value);
   $("reserveSummary").innerHTML = `
-    <div><strong>客户：</strong>${reserveName || "（请填写）"}</div>
-    <div><strong>手机号：</strong>${reservePhone || "（请填写）"}</div>
+    <div class="row g-2 mb-2">
+      <div class="col-md-6">
+        <label class="form-label mb-1" for="reserveCustomer">客户</label>
+        <input id="reserveCustomer" class="form-control" value="" placeholder="请输入客户姓名">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label mb-1" for="reservePhone">手机号</label>
+        <input id="reservePhone" class="form-control" value="" placeholder="请输入手机号">
+      </div>
+    </div>
     <div><strong>房间：</strong>${pendingReserveRoom.room_id}</div>
     <div><strong>房型：</strong>${pendingReserveRoom.room_type}</div>
     <div><strong>面积：</strong>${pendingReserveRoom.area}㎡</div>
@@ -1047,6 +1113,7 @@ function renderCheckoutFields() {
       <input class="form-control checkout-item-amount" type="number" min="0" value="0" placeholder="金额">
     </div>
   `;
+  updateCheckoutFeePreview();
 }
 
 async function init() {
@@ -1069,6 +1136,7 @@ if (new URLSearchParams(location.search).get("embed") === "1") {
 }
 
 document.getElementById("checkoutConfirmModal").addEventListener("click", e => { if (e.target && e.target.dataset && e.target.dataset.close === "1") hideCheckoutModal(); });
+document.getElementById("checkoutConfirmModal").addEventListener("input", updateCheckoutFeePreview);
 document.getElementById("changeConfirmModal").addEventListener("click", e => { if (e.target && e.target.dataset && e.target.dataset.close === "1") hideChangeModal(); });
 document.getElementById("reserveConfirmModal").addEventListener("click", e => { if (e.target && e.target.dataset && e.target.dataset.close === "1") hideReserveModal(); });
 

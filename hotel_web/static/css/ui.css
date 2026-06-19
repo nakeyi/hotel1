@@ -1374,6 +1374,13 @@ body{
   overflow:hidden;
 }
 
+#checkoutConfirmModal .reserve-modal-panel{
+  max-height:calc(100vh - 2rem);
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+}
+
 .reserve-modal-panel::before{
   content:"";
   display:block;
